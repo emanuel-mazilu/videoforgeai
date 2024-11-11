@@ -1,0 +1,102 @@
+You will be creating a highly engaging and educational YouTube video script that captivates
+the audience while exploring a specified topic. The topic you should write about is:
+
+<topic>
+<<TOPIC>>
+</topic>
+
+It is absolutely crucial that you do NOT write about any of the following topics under any
+circumstances:
+
+<ignored_topics>
+<<IGNORED TOPICS>>
+</ignored_topics>
+
+The script should be in <<LANGUAGE>>. The total video length must be EXACTLY:
+
+<video_length>
+<<VIDEO LENGTH>>
+</video_length>
+
+IF VIDEO LENGTH IS BIGGER THAN 60 SECONDS:
+- Create a comprehensive, in-depth script that explores multiple facets of the topic
+- Aim for 2-3 detailed main points with supporting evidence and examples
+- Include engaging transitions between segments
+- End with a powerful call-to-action that encourages viewers to:
+  * Like and subscribe to the channel
+  * Share their thoughts in the comments
+  * Follow for more similar content
+  * Share with friends interested in the topic
+
+The target audience is adults. The style should be a gripping historical documentary with
+fascinating facts, surprising anecdotes, and emotional storytelling. Avoid using any abbreviations
+or jargon.
+
+Weave a mesmerizing narrative that transports viewers into the heart of the topic, blending
+historical footage, evocative background music, and powerful narration.
+
+Include sound effect directions to enhance the storytelling. This should be in english. For example:
+[Sound: sound effect matching and appropriete to the matching image/sentence]
+[Music: melody matching the atmosphere of the video]
+
+These sound effects should be strategically placed to:
+- Set the mood and atmosphere
+- Emphasize dramatic moments
+- Support the emotional impact
+- Create immersive ambiance
+
+You should also generate rich, immersive descriptions for this many images to elevate the script,
+precisely timed at 5-second intervals:
+
+<number_of_images>
+<<NUMBER_OF_IMAGES>>
+</number_of_images>
+
+To create the image descriptions:
+- Harness the full potential of advanced stable diffusion prompts to paint vivid, hyperrealistic
+scenes that leap off the screen.
+- Employ a wide array of cutting-edge parameters to create jaw-dropping visuals that push the
+boundaries of storytelling.
+- Craft meticulous, relevant descriptions that perfectly sync with the voiceover, aiming for one
+image per sentence to maintain a dynamic pace.
+
+The image descriptions must be in English and ONLY English. This is crucial.
+
+Finally, craft an irresistible YouTube title and description drenched in SEO magic, guaranteeing
+your YouTube shorts skyrocket to the top of search results and entice viewers to dive headfirst into
+your captivating content.
+
+The output format must be JSON only. This format is crucial.
+
+Pay close attention to the output format:
+- Each sentence of the script should be a separate entry in the "script" list
+- Each image description should be a separate entry in the "descriptions" list
+- Only the image descriptions are in English - everything else must be in <<LANGUAGE>>
+- The movie should not be split into parts. It should be a single, self-contained video with a clear
+conclusion.
+
+Here is the exact JSON structure to follow:
+
+{
+"title": "script subject in maximum 3 electrifying words",
+"script": [
+"Sentence 1 - Hook them from the start",
+"Sentence 2 - Plunge deeper into the mystery",
+"Sentence 3 - Unleash a shocking revelation",
+...,
+],
+"music": "Soft orchestral music",
+"sounds": ["Gentle whoosh", "Medieval battle effects", ...],
+"descriptions": [
+"Mindboggling description for image 1 that leaps off the screen",
+"Jaw-dropping description for image 2 that sears into memory",
+"Heart-pounding description for image 3 that steals breath",
+...
+"Explosive description for image that shatters expectations",
+],
+"youtube_title": "Triumph over the YouTube shorts arena with this irresistible title",
+"youtube_description": "Forge an description so drenched in SEO sorcery and audience temptation that
+viewers have no choice but to succumb to your video's allure. Infuse every word with intrigue,
+value, and an unignorable summons to like, comment, subscribe, and share far and wide. Close with a
+call-to-action they simply cannot resist. add multiple hashtags"
+}
