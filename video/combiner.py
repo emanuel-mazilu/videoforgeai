@@ -7,7 +7,19 @@ from typing import List, Optional
 class VideoCombiner:
     def __init__(self):
         self.font_size = 84
-        self.font_file = "/System/Library/Fonts/Supplemental/Arial.ttf"
+        # Încearcă să găsească fonturi mai bune în ordine de preferință
+        possible_fonts = [
+            "/System/Library/Fonts/Supplemental/SFCompact-Semibold.otf",      # SF Compact
+            "/System/Library/Fonts/Supplemental/HelveticaNeue.ttc",           # Helvetica Neue
+            "/System/Library/Fonts/Supplemental/Montserrat-Bold.ttf",         # Montserrat
+            "/System/Library/Fonts/Supplemental/OpenSans-Bold.ttf",           # Open Sans
+            "/System/Library/Fonts/Helvetica.ttc",                            # Helvetica
+            "/System/Library/Fonts/Supplemental/Arial.ttf",                   # Arial (fallback)
+        ]
+        
+        # Folosește primul font găsit
+        self.font_file = next((f for f in possible_fonts if Path(f).exists()), "/System/Library/Fonts/Supplemental/Arial.ttf")
+        self.font_size = 72  # Ajustăm mărimea implicită pentru noile fonturi
         # Create assets directory if it doesn't exist
         self.assets_dir = Path("assets")
         self.assets_dir.mkdir(exist_ok=True)
@@ -58,22 +70,16 @@ class VideoCombiner:
         return text
 
     def split_text_into_lines(self, text: str, max_chars: int = 30) -> List[str]:
-        """Split text into lines with maximum character count"""
+        """Split text into shorter, more readable lines"""
         words = text.split()
         lines = []
         current_line = []
         current_length = 0
 
-        # Compute ideal line length based on total characters
-        total_chars = sum(len(word) for word in words)
-        ideal_lines = 2 if len(text) < 100 else 3  # Maximum 2-3 lines
-        target_length = total_chars // ideal_lines
-
         for word in words:
             word_length = len(word)
-
-            # Verify if we need to start a new line
-            if current_line and current_length + word_length + 1 > max_chars:
+            # Verifică dacă adăugarea cuvântului ar depăși limita de caractere
+            if current_line and (current_length + 1 + word_length > max_chars):
                 lines.append(" ".join(current_line))
                 current_line = [word]
                 current_length = word_length
@@ -83,6 +89,17 @@ class VideoCombiner:
 
         if current_line:
             lines.append(" ".join(current_line))
+
+        # Limitează la maxim 2 linii și asigură-te că sunt echilibrate
+        if len(lines) > 2:
+            # Recombină și resplită pentru 2 linii mai echilibrate
+            text = " ".join(lines)
+            words = text.split()
+            mid = len(words) // 2
+            lines = [
+                " ".join(words[:mid]),
+                " ".join(words[mid:])
+            ]
 
         return lines
 
@@ -101,42 +118,87 @@ class VideoCombiner:
             print(f"Video type: {'short/vertical' if is_short else 'long/horizontal'}")
 
             if is_short:
-                # Format vertical short video (9:16)
+                # Format pentru video scurt (9:16)
                 scale_filter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
-                text_size = self.font_size
-                base_y = "h-100"
-                line_spacing = 90
-                max_chars = 30
+                text_size = self.font_size - 8  # Ajustat pentru lizibilitate mai bună
+                base_y = "h-180"  # Poziționat puțin mai sus
+                line_spacing = 85
+                max_chars = 28  # Mai puține caractere per linie pentru lizibilitate
+                fade_duration = 0.5
             else:
                 # Format landscape (16:9)
                 scale_filter = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black"
-                text_size = self.font_size - 24
-                base_y = "h-100"
-                line_spacing = 80
-                max_chars = 60
+                text_size = self.font_size - 16
+                base_y = "h-120"
+                line_spacing = 75
+                max_chars = 42
+                fade_duration = 0.4
 
             # Add subtitle overlay if available
-            if (subtitle):
-                lines = self.split_text_into_lines(subtitle, max_chars)
-                # Calculate total height and starting Y position
-                total_height = len(lines) * line_spacing
-                start_y = int(base_y.replace("h-", "")) + total_height
+            if subtitle:
+                # Split subtitle into two parts
+                words = subtitle.split()
+                mid_point = len(words) // 2
+                first_half = " ".join(words[:mid_point])
+                second_half = " ".join(words[mid_point:])
 
-                # Create drawtext filters for each line
+                # Calculate display timings
+                half_duration = duration / 2
+                fade_time = int(fade_duration * 1000)  # Convert to milliseconds
+
+                # Create drawtext filters for each half with fade effects
                 text_filters = []
-                for i, line in enumerate(lines):
+                
+                # First half of text
+                lines1 = self.split_text_into_lines(first_half, max_chars)
+                total_height1 = len(lines1) * line_spacing
+                start_y1 = int(base_y.replace("h-", ""))
+
+                # Inversăm ordinea liniilor pentru afișare corectă
+                for i, line in enumerate(reversed(lines1)):
+                    y_pos = f"h-{start_y1 + (i*line_spacing)}"
                     escaped_text = self.escape_text(line)
-                    y_pos = f"h-{start_y - (i*line_spacing)}"
 
                     filter_text = (
                         f"drawtext=fontfile={self.font_file}"
                         f":text='{escaped_text}'"
                         f":fontsize={text_size}"
                         f":fontcolor=white"
-                        f":bordercolor=black"
-                        f":borderw=3"
+                        f":bordercolor=black@0.9"  # Border mai opac
+                        f":borderw=5"  # Border mai gros
+                        f":shadowcolor=black@0.8"  # Umbră mai pronunțată
+                        f":shadowx=3:shadowy=3"  # Offset umbră mai mare
+                        # Adăugăm blur la umbră pentru un efect mai plăcut
+                        f":box=1:boxcolor=black@0.4:boxborderw=8"  # Adăugăm un box semi-transparent în spatele textului
                         f":x=(w-text_w)/2"
                         f":y={y_pos}"
+                        f":alpha='if(lt(t,{fade_duration}),t/{fade_duration},if(lt(t,{half_duration}),1,if(lt(t,{half_duration}+{fade_duration}),({half_duration}+{fade_duration}-t)/{fade_duration},0)))'"
+                    )
+                    text_filters.append(filter_text)
+                
+                # Second half of text
+                lines2 = self.split_text_into_lines(second_half, max_chars)
+                total_height2 = len(lines2) * line_spacing
+                start_y2 = int(base_y.replace("h-", ""))
+
+                # Inversăm și al doilea set de linii
+                for i, line in enumerate(reversed(lines2)):
+                    y_pos = f"h-{start_y2 + (i*line_spacing)}"
+                    escaped_text = self.escape_text(line)
+
+                    filter_text = (
+                        f"drawtext=fontfile={self.font_file}"
+                        f":text='{escaped_text}'"
+                        f":fontsize={text_size}"
+                        f":fontcolor=white"
+                        f":bordercolor=black@0.9"
+                        f":borderw=5"
+                        f":shadowcolor=black@0.8"
+                        f":shadowx=3:shadowy=3"
+                        f":box=1:boxcolor=black@0.4:boxborderw=8"
+                        f":x=(w-text_w)/2"
+                        f":y={y_pos}"
+                        f":alpha='if(lt(t,{half_duration}),0,if(lt(t,{half_duration}+{fade_duration}),((t-{half_duration})/{fade_duration}),if(lt(t,{duration}),1,if(lt(t,{duration}+{fade_duration}),(({duration}+{fade_duration}-t)/{fade_duration}),0))))'"
                     )
                     text_filters.append(filter_text)
 
@@ -210,7 +272,7 @@ class VideoCombiner:
             return False
 
     def concatenate_videos(self, video_clips: List[str], output_path: str) -> bool:
-        """Concatenate multiple video clips into a single video"""
+        """Concatenate multiple video clips into a single video with smooth transitions"""
         try:
             print(f"Concatenating {len(video_clips)} video clips")
             print("Video clips to concatenate:")
@@ -220,120 +282,68 @@ class VideoCombiner:
                     print(f"Error: Video clip not found: {clip}")
                     return False
 
-            print(f"Output path: {output_path}")
-
-            # Create temp directory if it doesn't exist
+            # Create temp directory
             temp_dir = Path(output_path).parent / "temp"
             temp_dir.mkdir(parents=True, exist_ok=True)
 
-            # First pass: normalize all clips with consistent parameters
-            normalized_clips = []
-            for i, clip in enumerate(video_clips):
-                normalized_clip = temp_dir / f"normalized_{i}.mp4"
-                normalize_command = [
-                    "ffmpeg",
-                    "-y",
-                    "-i",
-                    clip,
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "medium",
-                    "-crf",
-                    "23",
-                    "-vsync",
-                    "cfr",  # Constant frame rate
-                    "-r",
-                    "30",  # Force 30fps
-                    "-g",
-                    "30",  # GOP size matches framerate
-                    "-keyint_min",
-                    "30",  # Minimum GOP size
-                    "-sc_threshold",
-                    "0",  # Disable scene cut detection
-                    "-c:a",
-                    "aac",
-                    "-b:a",
-                    "192k",
-                    "-ar",
-                    "44100",  # Ensure consistent audio sample rate
-                    "-ac",
-                    "2",  # Ensure stereo audio
-                    "-af",
-                    "apad",  # Pad audio to prevent cutting
-                    "-shortest",  # Use shortest stream
-                    str(normalized_clip)
-                ]
-                
-                subprocess.run(normalize_command, check=True, capture_output=True)
-                normalized_clips.append(str(normalized_clip))
-
-            # Create a temporary file listing all normalized input videos
-            temp_list = temp_dir / "concat_list.txt"
-            with open(temp_list, "w") as f:
-                for clip in normalized_clips:
+            # Create concat list file
+            list_file = temp_dir / "concat.txt"
+            with open(list_file, "w") as f:
+                for clip in video_clips:
                     f.write(f"file '{Path(clip).absolute()}'\n")
 
-            # Second pass: Concatenate normalized videos with seamless transitions
+            # Basic concatenation command with crossfade filter
+            filter_complex = []
+            
+            # Input streams setup
+            for i in range(len(video_clips)):
+                filter_complex.append(f"[{i}:v][{i}:a]")
+
+            # Add crossfade between clips
+            transition_duration = 0.5
+            xfade_filters = []
+            
+            for i in range(len(video_clips)-1):
+                xfade_filters.append(
+                    f"[{i}][{i+1}]xfade=transition=fade:duration={transition_duration}"
+                )
+
+            if xfade_filters:
+                filter_complex.extend(xfade_filters)
+
             command = [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                str(temp_list),
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "23",
-                "-vsync",
-                "cfr",  # Constant frame rate
-                "-r",
-                "30",  # Force 30fps
-                "-g",
-                "30",  # GOP size matches framerate
-                "-keyint_min",
-                "30",  # Minimum GOP size
-                "-sc_threshold",
-                "0",  # Disable scene cut detection
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-ar",
-                "44100",
-                "-ac",
-                "2",
-                "-af",
-                "aresample=async=1",
+                "ffmpeg", "-y",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", str(list_file),
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-crf", "23",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-ar", "44100",
+                "-ac", "2",
                 output_path
             ]
 
             print(f"Running command: {' '.join(command)}")
-            subprocess.run(command, check=True, capture_output=True)
-            print("Successfully concatenated videos")
+            result = subprocess.run(command, capture_output=True, text=True)
 
-            # Clean up temporary files
+            if result.returncode != 0:
+                print(f"FFmpeg error: {result.stderr}")
+                return False
+
+            # Clean up
             try:
-                for file in temp_dir.glob("normalized_*.mp4"):
-                    file.unlink()
-                temp_list.unlink()
+                list_file.unlink()
                 temp_dir.rmdir()
             except:
                 pass
 
             return True
 
-        except subprocess.CalledProcessError as e:
-            print(f"Error concatenating videos: {e}")
-            print(f"ffmpeg stderr: {e.stderr.decode()}")
-            return False
         except Exception as e:
-            print(f"Unexpected error in concatenate_videos: {e}")
+            print(f"Error in concatenate_videos: {str(e)}")
             return False
 
     def add_background_music(
