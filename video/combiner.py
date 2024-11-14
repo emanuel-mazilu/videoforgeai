@@ -90,9 +90,8 @@ class VideoCombiner:
         if current_line:
             lines.append(" ".join(current_line))
 
-        # Limitează la maxim 2 linii și asigură-te că sunt echilibrate
+        # Limit to 2 lines for better balance
         if len(lines) > 2:
-            # Recombină și resplită pentru 2 linii mai echilibrate
             text = " ".join(lines)
             words = text.split()
             mid = len(words) // 2
@@ -118,12 +117,11 @@ class VideoCombiner:
             print(f"Video type: {'short/vertical' if is_short else 'long/horizontal'}")
 
             if is_short:
-                # Format pentru video scurt (9:16)
                 scale_filter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
-                text_size = self.font_size - 8  # Ajustat pentru lizibilitate mai bună
-                base_y = "h-180"  # Poziționat puțin mai sus
+                text_size = self.font_size - 8
+                base_y = "h-180"
                 line_spacing = 85
-                max_chars = 28  # Mai puține caractere per linie pentru lizibilitate
+                max_chars = 28
                 fade_duration = 0.5
             else:
                 # Format landscape (16:9)
@@ -154,7 +152,6 @@ class VideoCombiner:
                 total_height1 = len(lines1) * line_spacing
                 start_y1 = int(base_y.replace("h-", ""))
 
-                # Inversăm ordinea liniilor pentru afișare corectă
                 for i, line in enumerate(reversed(lines1)):
                     y_pos = f"h-{start_y1 + (i*line_spacing)}"
                     escaped_text = self.escape_text(line)
@@ -164,12 +161,11 @@ class VideoCombiner:
                         f":text='{escaped_text}'"
                         f":fontsize={text_size}"
                         f":fontcolor=white"
-                        f":bordercolor=black@0.9"  # Border mai opac
-                        f":borderw=5"  # Border mai gros
-                        f":shadowcolor=black@0.8"  # Umbră mai pronunțată
-                        f":shadowx=3:shadowy=3"  # Offset umbră mai mare
-                        # Adăugăm blur la umbră pentru un efect mai plăcut
-                        f":box=1:boxcolor=black@0.4:boxborderw=8"  # Adăugăm un box semi-transparent în spatele textului
+                        f":bordercolor=black@0.9"
+                        f":borderw=5"
+                        f":shadowcolor=black@0.8"
+                        f":shadowx=3:shadowy=3"
+                        f":box=1:boxcolor=black@0.4:boxborderw=8"
                         f":x=(w-text_w)/2"
                         f":y={y_pos}"
                         f":alpha='if(lt(t,{fade_duration}),t/{fade_duration},if(lt(t,{half_duration}),1,if(lt(t,{half_duration}+{fade_duration}),({half_duration}+{fade_duration}-t)/{fade_duration},0)))'"
@@ -181,7 +177,6 @@ class VideoCombiner:
                 total_height2 = len(lines2) * line_spacing
                 start_y2 = int(base_y.replace("h-", ""))
 
-                # Inversăm și al doilea set de linii
                 for i, line in enumerate(reversed(lines2)):
                     y_pos = f"h-{start_y2 + (i*line_spacing)}"
                     escaped_text = self.escape_text(line)
