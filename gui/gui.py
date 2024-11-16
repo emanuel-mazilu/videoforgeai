@@ -726,6 +726,8 @@ class MainWindow(QMainWindow):
                 if project.subject == current.text():
                     self.current_project = project
                     self.current_image_index = 0
+                    # Update duration input with project duration
+                    self.duration_input.setValue(project.duration)
                     self.load_preview()
                     self.update_metadata_display()
                     self.update_ui_state()
@@ -1149,11 +1151,12 @@ class MainWindow(QMainWindow):
         current_category = "shorts" if self.current_project.duration <= 60 else "long"
         new_category = "long" if current_category == "shorts" else "shorts"
 
-        if new_category == "shorts":
-            self.current_project.duration = 60
-        else:
-            self.current_project.duration = 120
-
+        # Set new duration based on category
+        new_duration = 60 if new_category == "shorts" else 120
+        
+        # Update project and UI
+        self.current_project.duration = new_duration
+        self.duration_input.setValue(new_duration)
         self.current_project.update()
 
         self.load_projects()

@@ -50,10 +50,10 @@ class VideoCombiner:
             text = text.replace(old, new)
 
         # Now escape for ffmpeg
-        text = text.replace("\\", "\\\\\\\\")  # Escape backslashes first
-        text = text.replace(":", "\\:")  # Escape colons
-        text = text.replace("'", "\\\\\\\\'")  # Escape single quotes
-        text = text.replace('"', '\\\\"')  # Escape double quotes
+        text = text.replace("\\", "\\\\")  # Escape backslashes
+        text = text.replace(":", "\\:")     # Escape colons
+        text = text.replace("'", "''")      # Double single quotes instead of escaping
+        text = text.replace('"', '\\"')     # Escape double quotes
 
         # Ensure other special characters are properly handled
         text = text.replace("ă", "a")
