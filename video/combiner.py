@@ -19,7 +19,6 @@ class VideoCombiner:
         
         # Folosește primul font găsit
         self.font_file = next((f for f in possible_fonts if Path(f).exists()), "/System/Library/Fonts/Supplemental/Arial.ttf")
-        self.font_size = 72  # Ajustăm mărimea implicită pentru noile fonturi
         # Create assets directory if it doesn't exist
         self.assets_dir = Path("assets")
         self.assets_dir.mkdir(exist_ok=True)
