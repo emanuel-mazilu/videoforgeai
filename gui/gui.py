@@ -26,6 +26,8 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QSlider,
     QTabWidget,
+    QSplitter,  # Adaugă QSplitter aici
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QSettings
 from PyQt6.QtGui import QPixmap, QImage
@@ -269,8 +271,21 @@ class MainWindow(QMainWindow):
         self.slider_being_dragged = False
         self.playing = False
 
+        # Initialize UI
         self.init_ui()
+        
+        # Initialize other components
         self.load_projects()
+        self.create_menu_bar()
+        
+        # Setup media player
+        self.audio_output = QAudioOutput()
+        self.media_player = QMediaPlayer()
+        self.media_player.setAudioOutput(self.audio_output)
+        self.media_player.setVideoOutput(self.video_widget)
+        self.media_player.errorOccurred.connect(self.handle_media_error)
+        self.media_player.positionChanged.connect(self.on_position_changed)
+        self.media_player.durationChanged.connect(self.on_duration_changed)
 
         # Add resize timer
         self.resize_timer = QTimer()
@@ -278,11 +293,6 @@ class MainWindow(QMainWindow):
         self.resize_timer.timeout.connect(self.delayed_resize)
 
         self.upload_worker = None
-
-        # Create menu bar
-        self.create_menu_bar()
-
-        # Load settings
         self.settings = QSettings("CloudePython", "AIVideoCreator")
 
     def create_menu_bar(self):
@@ -375,8 +385,8 @@ class MainWindow(QMainWindow):
         # Add suggestion button
         self.suggest_topic_btn = QPushButton("Suggest Topics")
         self.suggest_topic_btn.clicked.connect(self.show_topic_suggestions)
-        # Add it near the subject input
-        form_layout.insertWidget(1, self.suggest_topic_btn)  # Add after Subject label
+        # Add it after the subject input
+        form_layout.insertWidget(2, self.suggest_topic_btn)  # Add after Subject label
 
         # Duration input
         duration_layout = QHBoxLayout()
@@ -393,10 +403,6 @@ class MainWindow(QMainWindow):
         self.create_video_btn = QPushButton("Create Video")
         self.create_video_btn.clicked.connect(self.start_video_creation)
         left_layout.addWidget(self.create_video_btn)
-
-        self.clear_btn = QPushButton("Clear")
-        self.clear_btn.clicked.connect(self.clear_form)
-        left_layout.addWidget(self.clear_btn)
 
         # Progress section
         self.progress_bar = QProgressBar()
@@ -416,16 +422,23 @@ class MainWindow(QMainWindow):
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
 
-        # Video preview section
+        # Create vertical splitter for right panel
+        self.v_splitter = QSplitter()
+        self.v_splitter.setOrientation(Qt.Orientation.Vertical)
+        right_layout.addWidget(self.v_splitter)
+
+        # Video preview section in top splitter
         video_preview_container = QWidget()
         video_layout = QVBoxLayout(video_preview_container)
         video_layout.addWidget(QLabel("Video Preview:"))
 
         # Video widget setup
         self.video_widget = QVideoWidget()
-        self.video_widget.setMinimumSize(640, 360)
+        self.video_widget.setMinimumSize(640, 360)  # 16:9 minimum size
         self.video_widget.setStyleSheet("border: 1px solid #ccc;")
         self.video_widget.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.video_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.video_widget.mouseReleaseEvent = self.toggle_video_playback
         video_layout.addWidget(self.video_widget)
 
         # Slider setup
@@ -444,38 +457,25 @@ class MainWindow(QMainWindow):
         time_layout.addWidget(self.total_time_label)
         video_layout.addLayout(time_layout)
 
-        # Media player setup
-        self.audio_output = QAudioOutput()
-        self.media_player = QMediaPlayer()
-        self.media_player.setAudioOutput(self.audio_output)
-        self.media_player.setVideoOutput(self.video_widget)
-        self.media_player.errorOccurred.connect(self.handle_media_error)
-        self.media_player.positionChanged.connect(self.on_position_changed)
-        self.media_player.durationChanged.connect(self.on_duration_changed)
-
-        # Add video preview container to right layout
-        right_layout.addWidget(video_preview_container)
-
-        # Add Video click handler
-        self.video_widget.mouseReleaseEvent = self.toggle_video_playback
-
-        # Add buttons container
+        # Add button container to video preview
         button_container = QHBoxLayout()
-
-        # Add regenerate and upload buttons
         self.regenerate_video_btn = QPushButton("Regenerate Video")
         self.regenerate_video_btn.clicked.connect(self.regenerate_video)
         self.upload_video_btn = QPushButton("Upload to YouTube")
         self.upload_video_btn.setEnabled(False)
         self.upload_video_btn.clicked.connect(self.upload_video)
-
         button_container.addWidget(self.regenerate_video_btn)
         button_container.addWidget(self.upload_video_btn)
-        right_layout.addLayout(button_container)
+        video_layout.addLayout(button_container)
 
-        # Image preview section
+        # Add video preview container to splitter
+        self.v_splitter.addWidget(video_preview_container)
+
+        # Image preview section in bottom splitter
         image_preview_widget = QWidget()
         image_layout = QVBoxLayout(image_preview_widget)
+
+        image_layout.addWidget(QLabel("Image Gallery:"))
 
         # Create a scroll area for the image gallery
         self.image_scroll_area = QScrollArea()
@@ -484,7 +484,6 @@ class MainWindow(QMainWindow):
         self.image_scroll_area_widget.setLayout(self.image_scroll_layout)
         self.image_scroll_area.setWidgetResizable(True)
         self.image_scroll_area.setWidget(self.image_scroll_area_widget)
-        image_layout.addWidget(QLabel("Image Gallery:"))
         image_layout.addWidget(self.image_scroll_area)
 
         # Add image action buttons below the gallery
@@ -497,12 +496,41 @@ class MainWindow(QMainWindow):
         image_actions.addWidget(self.regenerate_image_btn)
         image_layout.addLayout(image_actions)
 
-        right_layout.addWidget(image_preview_widget)
+        # Add image preview container to splitter
+        self.v_splitter.addWidget(image_preview_widget)
+
+        # Set initial splitter sizes
+        self.v_splitter.setSizes([500, 500])  # Equal initial sizes
 
         main_layout.addWidget(right_panel)
 
-        # Initialize UI state
-        self.update_ui_state()
+    def create_menu_bar(self):
+        """Create the application menu bar"""
+        menubar = self.menuBar()
+
+        # File menu with updated title
+        file_menu = menubar.addMenu("File")
+
+        # Settings action
+        settings_action = file_menu.addAction("Settings")
+        settings_action.triggered.connect(self.show_settings)
+
+        # Exit action
+        exit_action = file_menu.addAction("Exit")
+        exit_action.triggered.connect(self.close)
+
+    def show_settings(self):
+        """Show the settings dialog"""
+        dialog = SettingsDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Reload API keys in generators
+            self.video_creator.script_generator.api_key = os.getenv(
+                "OPENROUTER_API_KEY"
+            )
+            self.video_creator.image_generator.api_key = os.getenv("STABILITY_API_KEY")
+            self.video_creator.audio_generator.api_key = os.getenv("ELEVENLABS_API_KEY")
+
+            QMessageBox.information(self, "Settings", "Settings saved successfully!")
 
     def handle_media_error(self, error):
         """Handle media player errors"""
@@ -556,10 +584,8 @@ class MainWindow(QMainWindow):
         """Toggle video play/pause on video widget click"""
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.media_player.pause()
-            self.playing = False
         else:
             self.media_player.play()
-            self.playing = True
 
     def play_video(self):
         """Play the current video"""
@@ -579,7 +605,6 @@ class MainWindow(QMainWindow):
                 # Add a small delay before playing
                 QThread.msleep(100)
                 self.media_player.play()
-                self.playing = True
             else:
                 self.status_label.setText("Video file does not exist")
         else:
