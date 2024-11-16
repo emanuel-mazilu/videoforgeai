@@ -2,6 +2,7 @@ import sys
 import os
 import asyncio
 from pathlib import Path
+from datetime import datetime  # Adaugă acest import la începutul fișierului
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -293,7 +294,7 @@ class MainWindow(QMainWindow):
         self.resize_timer.timeout.connect(self.delayed_resize)
 
         self.upload_worker = None
-        self.settings = QSettings("CloudePython", "AIVideoCreator")
+        self.settings = QSettings("VideoForgeAI", "VideoForgeAI")
 
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -1158,12 +1159,27 @@ class MainWindow(QMainWindow):
             self.metadata_label.clear()
             return
 
+        # Convert timestamps to readable format
+        try:
+            # Parse created_at timestamp
+            created_timestamp = float(self.current_project.created_at)
+            created_dt = datetime.fromtimestamp(created_timestamp)
+            created_str = created_dt.strftime("%d %b %Y, %H:%M")
+
+            # Parse updated_at timestamp
+            updated_timestamp = float(self.current_project.updated_at)
+            updated_dt = datetime.fromtimestamp(updated_timestamp)
+            updated_str = updated_dt.strftime("%d %b %Y, %H:%M")
+        except (ValueError, TypeError, AttributeError):
+            created_str = "N/A"
+            updated_str = "N/A"
+
         metadata = [
             f"Title: {self.current_project.title}",
             f"Subject: {self.current_project.subject}",
-            f"Duration: {self.current_project.duration}s",
-            f"Created: {self.current_project.created_at}",
-            f"Updated: {self.current_project.updated_at}",
+            f"Duration: {self.current_project.duration} seconds",
+            f"Created: {created_str}",
+            f"Last updated: {updated_str}",
         ]
 
         self.metadata_label.setText("\n".join(metadata))
