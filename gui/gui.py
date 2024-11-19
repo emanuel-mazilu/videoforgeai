@@ -976,7 +976,7 @@ class MainWindow(QMainWindow):
                 # Force UI update
                 QApplication.processEvents()
         except Exception as e:
-            print(f"Error reloading video: {e}")
+            print(f"Error reloading video: {str(e)}")
             self.status_label.setText("Error reloading video")
 
     def select_image(self, index, label, event):
@@ -1032,10 +1032,7 @@ class MainWindow(QMainWindow):
             changes_made = True
 
         if changes_made:
-            # Add scene to modified set
-            self.modified_scenes.add(self.selected_image_index)
-            
-            # Folosește metoda oficială din VideoCreator
+            # Folosește metoda oficială din VideoCreator pentru regenerare
             self.worker = VideoWorker(
                 self.video_creator,
                 self.current_project,
@@ -1051,6 +1048,8 @@ class MainWindow(QMainWindow):
             self.worker.finished.connect(self.on_scene_update_finished)
             self.worker.start()
 
+            # Adaugă scena la setul de scene modificate pentru regenerare ulterioară
+            self.modified_scenes.add(self.selected_image_index)
             self.update_ui_state(is_processing=True)
 
     def on_scene_update_finished(self, success: bool):
@@ -1058,10 +1057,10 @@ class MainWindow(QMainWindow):
         self.update_ui_state(is_processing=False)
         if success:
             self.status_label.setText(
-                f"Scene {self.selected_image_index + 1} updated successfully!"
+                f"Scene {self.selected_image_index + 1} updated successfully! "
+                f"Click 'Regenerate Video' to create the final video."
             )
             self.load_image_gallery()
-            # Mark the modified scene in the gallery
             self.highlight_modified_scenes()
         else:
             self.status_label.setText("Error updating scene")

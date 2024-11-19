@@ -259,15 +259,15 @@ class VideoCreator:
             return False
 
     async def regenerate_scene(self, project: Project, scene_index: int, progress_callback=None, skip_audio=True) -> bool:
-        """Regenerate a specific scene (image and audio)"""
+        """Regenerate a specific scene (image and audio) without recreating video"""
         try:
             # Calculate if this is a short video
             is_short = project.duration <= 60
             
             self._update_progress(progress_callback, f"Regenerating scene {scene_index + 1}...", 0)
                 
-            # Regenerate image with correct format (0-40%)
-            self._update_progress(progress_callback, "Generating new image...", 10)
+            # Regenerate image with correct format (0-50%)
+            self._update_progress(progress_callback, "Generating new image...", 25)
             new_image, error = await self.image_generator.regenerate_image(
                 project.id,
                 scene_index,
@@ -280,9 +280,9 @@ class VideoCreator:
             if new_image:
                 project.images[scene_index] = new_image
                 
-            # Skip audio regeneration if specified (40-70%)
+            # Skip audio regeneration if specified (50-100%)
             if not skip_audio:
-                self._update_progress(progress_callback, "Generating new audio...", 40)
+                self._update_progress(progress_callback, "Generating new audio...", 50)
                 new_audio = await self.audio_generator.regenerate_audio(
                     project.id,
                     scene_index,
@@ -292,23 +292,11 @@ class VideoCreator:
                 if new_audio:
                     project.audio_files[scene_index] = new_audio
             
-            # Recreate video (70-100%)
-            self._update_progress(progress_callback, "Creating updated video...", 70)
-            output_path = await self.video_combiner.create_final_video(
-                project.id, 
-                project.images, 
-                project.audio_files if not skip_audio else []
-            )
+            # Update project to save changes
+            project.update()
+            self._update_progress(progress_callback, f"Scene {scene_index + 1} updated successfully!", 100)
+            return True
             
-            if output_path:
-                project.output_path = output_path
-                project.update()
-                self._update_progress(progress_callback, f"Scene {scene_index + 1} regeneration complete!", 100)
-                return True
-                    
-            self._update_progress(progress_callback, "Failed to create final video", 70)
-            return False
-                
         except Exception as e:
             error_msg = str(e)
             print(f"Error regenerating scene: {error_msg}")
