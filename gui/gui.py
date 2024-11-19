@@ -2,7 +2,7 @@ import sys
 import os
 import asyncio
 from pathlib import Path
-from datetime import datetime  # Adaugă acest import la începutul fișierului
+from datetime import datetime 
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QSlider,
     QTabWidget,
-    QSplitter,  # Adaugă QSplitter aici
+    QSplitter,
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QSettings
@@ -653,61 +653,79 @@ class MainWindow(QMainWindow):
             self.clear_form()
             self.update_ui_state()
 
+    def update_progress(self, status: str, value: int):
+        """Update progress bar and status with validation"""
+        try:
+            # Validate progress value
+            value = max(0, min(100, value))  # Ensure value is between 0-100
+            
+            # Update UI elements
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setValue(value)
+            if hasattr(self, 'status_label'):
+                self.status_label.setText(status)
+                
+            # Force UI update for smoother progress
+            QApplication.processEvents()
+            
+        except Exception as e:
+            print(f"Error updating progress: {e}")
+
     def start_video_creation(self):
         """Start the video creation process"""
-        subject = self.subject_input.text().strip()
-        if not subject:
-            self.status_label.setText("Please enter a subject")
-            return
+        try:
+            # Reset progress
+            self.progress_bar.setValue(0)
+            self.status_label.setText("")
+            
+            subject = self.subject_input.text().strip()
+            if not subject:
+                self.status_label.setText("Please enter a subject")
+                return
 
-        # Check if project already exists
-        existing_projects = self.project_manager.list_projects()
-        for project in existing_projects:
-            if project.subject.lower() == subject.lower():
-                reply = QMessageBox.question(
-                    self,
-                    "Project Exists",
-                    f'A project with subject "{subject}" already exists. Do you want to create a new one anyway?',
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
-                if reply == QMessageBox.StandardButton.No:
-                    return
+            # Check if project already exists
+            existing_projects = self.project_manager.list_projects()
+            for project in existing_projects:
+                if project.subject.lower() == subject.lower():
+                    reply = QMessageBox.question(
+                        self,
+                        "Project Exists",
+                        f'A project with subject "{subject}" already exists. Do you want to create a new one anyway?',
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
+                    )
+                    if reply == QMessageBox.StandardButton.No:
+                        return
 
-        # Create new project
-        duration = self.duration_input.value()
-        project = self.project_manager.create_project(subject, duration)
-        project.title = subject
-        project.save()
+            # Create new project
+            duration = self.duration_input.value()
+            project = self.project_manager.create_project(subject, duration)
+            project.title = subject
+            project.save()
 
-        self.current_project = project
-        self.load_projects()
+            self.current_project = project
+            self.load_projects()
 
-        # Pass language setting to script generator
-        self.video_creator.script_generator.language = self.settings.value(
-            "script_language", "Romanian"
-        )
+            # Pass language setting to script generator
+            self.video_creator.script_generator.language = self.settings.value(
+                "script_language", "Romanian"
+            )
 
-        # Start video creation with audio
-        self.worker = VideoWorker(
-            self.video_creator,
-            self.current_project,
-            lambda p, cb: self.video_creator.create_video(p, cb, skip_audio=False),
-        )
-        self.worker.progress.connect(self.update_progress)
-        self.worker.finished.connect(self.on_video_creation_finished)
-        self.worker.start()
+            # Start video creation with audio
+            self.worker = VideoWorker(
+                self.video_creator,
+                self.current_project,
+                lambda p, cb: self.video_creator.create_video(p, cb, skip_audio=False),
+            )
+            self.worker.progress.connect(self.update_progress)
+            self.worker.finished.connect(self.on_video_creation_finished)
+            self.worker.start()
 
-        self.update_ui_state(is_processing=True)
-
-    def create_new_project(self):
-        """Remove this method as it's no longer needed"""
-        pass
-
-    def update_progress(self, status: str, value: int):
-        """Update progress bar and status"""
-        self.progress_bar.setValue(value)
-        self.status_label.setText(status)
+            self.update_ui_state(is_processing=True)
+            
+        except Exception as e:
+            self.update_progress(f"Error starting video creation: {str(e)}", 0)
+            self.update_ui_state(is_processing=False)
 
     def on_video_creation_finished(self, success: bool):
         """Handle video creation completion"""
@@ -991,9 +1009,7 @@ class MainWindow(QMainWindow):
             return
 
         # Get current prompt and script
-        prompt = self.current_project.metadata["image_descriptions"][
-            self.selected_image_index
-        ]
+        prompt = self.current_project.metadata["image_descriptions"][self.selected_image_index]
         script = self.current_project.scripts[self.selected_image_index]
 
         # Show dialog
@@ -1008,70 +1024,29 @@ class MainWindow(QMainWindow):
         changes_made = False
 
         if dialog.regen_image_cb.isChecked():
-            self.current_project.metadata["image_descriptions"][
-                self.selected_image_index
-            ] = new_prompt
+            self.current_project.metadata["image_descriptions"][self.selected_image_index] = new_prompt
             changes_made = True
 
         if dialog.regen_audio_cb.isChecked():
             self.current_project.scripts[self.selected_image_index] = new_script
             changes_made = True
 
-        # Create worker for regeneration without video recreation
-        async def regenerate_scene(project, progress_callback):
-            try:
-                progress_callback("Regenerating scene...", 0)
-
-                if dialog.regen_image_cb.isChecked():
-                    progress_callback("Regenerating image...", 25)
-                    new_image, error = (
-                        await self.video_creator.image_generator.regenerate_image(
-                            project.id,
-                            self.selected_image_index,
-                            new_prompt,
-                            is_short=(project.duration <= 60),
-                        )
-                    )
-
-                    if error:
-                        progress_callback(f"Error: {error}", 0)
-                        return False
-
-                    if new_image:
-                        project.images[self.selected_image_index] = new_image
-
-                if dialog.regen_audio_cb.isChecked():
-                    progress_callback("Regenerating audio...", 50)
-                    new_audio = (
-                        await self.video_creator.audio_generator.regenerate_audio(
-                            project.id,
-                            self.selected_image_index,
-                            new_script,
-                            project.duration,
-                        )
-                    )
-
-                    if new_audio:
-                        project.audio_files[self.selected_image_index] = new_audio
-
-                project.update()
-                progress_callback(
-                    f"Scene {self.selected_image_index + 1} updated successfully!", 100
-                )
-                return True
-
-            except Exception as e:
-                progress_callback(f"Error regenerating scene: {str(e)}", 0)
-                return False
-
         if changes_made:
             # Add scene to modified set
             self.modified_scenes.add(self.selected_image_index)
-
-            # Create and start the worker
+            
+            # Folosește metoda oficială din VideoCreator
             self.worker = VideoWorker(
-                self.video_creator, self.current_project, regenerate_scene
+                self.video_creator,
+                self.current_project,
+                lambda p, cb: self.video_creator.regenerate_scene(
+                    p, 
+                    self.selected_image_index,
+                    cb,
+                    skip_audio=not dialog.regen_audio_cb.isChecked()
+                )
             )
+            
             self.worker.progress.connect(self.update_progress)
             self.worker.finished.connect(self.on_scene_update_finished)
             self.worker.start()

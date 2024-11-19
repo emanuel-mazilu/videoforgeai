@@ -13,21 +13,28 @@ class VideoCreator:
         self.image_generator = ImageGenerator()
         self.audio_generator = AudioGenerator()
         self.video_combiner = VideoCombiner()
+        self._last_progress = 0
+        self._last_message = ""
+
+    def _update_progress(self, progress_callback, message: str, value: int):
+        """Helper to update progress only when there's a change"""
+        if progress_callback and (value != self._last_progress or message != self._last_message):
+            self._last_progress = value
+            self._last_message = message
+            progress_callback(message, value)
         
     async def create_video(self, project: Project, progress_callback=None, skip_audio=False) -> bool:
         """Create a complete video from start to finish"""
         try:
-            if progress_callback:
-                progress_callback("Generating script...", 0)
-                
-            # Generate script
+            # Script generation (0-20%)
+            self._update_progress(progress_callback, "Generating script...", 0)
             script_data = await self.script_generator.generate_script(project.subject, project.duration)
             if not script_data or not self.script_generator.validate_script(script_data):
-                if progress_callback:
-                    progress_callback("Error: Failed to generate or validate script", 0)
+                self._update_progress(progress_callback, "Error: Failed to generate or validate script", 0)
                 return False
-                
-            # Update project with script data
+
+            # Update project data (20%)
+            self._update_progress(progress_callback, "Updating project data...", 20)
             project.set_title(script_data["title"])
             project.scripts = script_data["script"]
             project.add_metadata("youtube_title", script_data["youtube_title"])
@@ -36,50 +43,38 @@ class VideoCreator:
             project.add_metadata("sound_effects", script_data["sounds"])
             project.add_metadata("image_descriptions", script_data["descriptions"])
             
-            if progress_callback:
-                progress_callback("Generating images...", 25)
-                
-            # Calculate if this should be a short video
+            # Image generation (20-50%)
+            self._update_progress(progress_callback, "Generating images...", 25)
             is_short = project.duration <= 60
-            
-            # Generate images with correct format
             images, error = await self.image_generator.generate_project_images(
                 project.id, 
                 script_data["descriptions"],
                 is_short=is_short  # Pass video type
             )
             if error:
-                if progress_callback:
-                    progress_callback(f"Error: {error}", 25)
+                self._update_progress(progress_callback, f"Error: {error}", 25)
                 return False
             if not images or len(images) != len(script_data["script"]):
-                if progress_callback:
-                    progress_callback("Error: Failed to generate all required images", 25)
+                self._update_progress(progress_callback, "Error: Failed to generate all required images", 25)
                 return False
             project.images = images
             
-            # Skip audio generation if specified
+            # Audio generation (50-80%)
             if not skip_audio:
-                if progress_callback:
-                    progress_callback("Generating voiceover...", 50)
-                    
-                # Generate audio with duration information
+                self._update_progress(progress_callback, "Generating voiceover...", 50)
                 audio_files = await self.audio_generator.generate_project_audio(
                     project.id, script_data["script"], project.duration
                 )
                 if not audio_files or len(audio_files) != len(script_data["script"]):
-                    if progress_callback:
-                        progress_callback("Error: Failed to generate voiceover", 50)
+                    self._update_progress(progress_callback, "Error: Failed to generate voiceover", 50)
                     return False
                 project.audio_files = audio_files
             else:
                 # Use empty audio files list when skipping audio
                 project.audio_files = []
             
-            if progress_callback:
-                progress_callback("Creating final video with voiceover...", 75)
-                
-            # Combine everything into final video (without audio if skipped)
+            # Final video creation (80-100%)
+            self._update_progress(progress_callback, "Creating final video with voiceover...", 80)
             output_path = await self.video_combiner.create_final_video(
                 project.id, 
                 project.images, 
@@ -87,23 +82,19 @@ class VideoCreator:
                 scripts=project.scripts
             )
             if not output_path:
-                if progress_callback:
-                    progress_callback("Error: Failed to create final video", 75)
+                self._update_progress(progress_callback, "Error: Failed to create final video", 80)
                 return False
             
             project.output_path = output_path
             project.update()
             
-            if progress_callback:
-                progress_callback("Video creation complete!", 100)
-                
+            self._update_progress(progress_callback, "Video creation complete!", 100)
             return True
             
         except Exception as e:
             error_msg = str(e)
             print(f"Error creating video: {error_msg}")
-            if progress_callback:
-                progress_callback(f"Error: {error_msg}", 0)
+            self._update_progress(progress_callback, f"Error: {error_msg}", 0)
             return False
 
     async def recreate_video(self, project: Project, progress_callback=None) -> bool:
@@ -267,13 +258,16 @@ class VideoCreator:
                 progress_callback(f"Error: {error_msg}", 0)
             return False
 
-    async def regenerate_scene(self, project: Project, scene_index: int, skip_audio=True) -> bool:
+    async def regenerate_scene(self, project: Project, scene_index: int, progress_callback=None, skip_audio=True) -> bool:
         """Regenerate a specific scene (image and audio)"""
         try:
             # Calculate if this is a short video
             is_short = project.duration <= 60
             
-            # Regenerate image with correct format
+            self._update_progress(progress_callback, f"Regenerating scene {scene_index + 1}...", 0)
+                
+            # Regenerate image with correct format (0-40%)
+            self._update_progress(progress_callback, "Generating new image...", 10)
             new_image, error = await self.image_generator.regenerate_image(
                 project.id,
                 scene_index,
@@ -281,14 +275,14 @@ class VideoCreator:
                 is_short=is_short
             )
             if error:
-                print(f"Error regenerating image: {error}")
+                self._update_progress(progress_callback, f"Error regenerating image: {error}", 0)
                 return False
             if new_image:
                 project.images[scene_index] = new_image
-            
-            # Skip audio regeneration if specified
+                
+            # Skip audio regeneration if specified (40-70%)
             if not skip_audio:
-                # Regenerate audio with duration information
+                self._update_progress(progress_callback, "Generating new audio...", 40)
                 new_audio = await self.audio_generator.regenerate_audio(
                     project.id,
                     scene_index,
@@ -298,17 +292,25 @@ class VideoCreator:
                 if new_audio:
                     project.audio_files[scene_index] = new_audio
             
-            # Recreate video
+            # Recreate video (70-100%)
+            self._update_progress(progress_callback, "Creating updated video...", 70)
             output_path = await self.video_combiner.create_final_video(
-                project.id, project.images, project.audio_files if not skip_audio else []
+                project.id, 
+                project.images, 
+                project.audio_files if not skip_audio else []
             )
+            
             if output_path:
                 project.output_path = output_path
                 project.update()
+                self._update_progress(progress_callback, f"Scene {scene_index + 1} regeneration complete!", 100)
                 return True
-                
+                    
+            self._update_progress(progress_callback, "Failed to create final video", 70)
             return False
-            
+                
         except Exception as e:
-            print(f"Error regenerating scene: {e}")
+            error_msg = str(e)
+            print(f"Error regenerating scene: {error_msg}")
+            self._update_progress(progress_callback, f"Error: {error_msg}", 0)
             return False
