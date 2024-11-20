@@ -1,7 +1,7 @@
 import sys
 import os
 from dotenv import load_dotenv
-from gui.gui import main
+from gui.MainWindow import main
 
 if __name__ == "__main__":
     # Load environment variables from .env file

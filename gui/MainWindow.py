@@ -1,8 +1,7 @@
 import sys
 import os
-import asyncio
 from pathlib import Path
-from datetime import datetime 
+from datetime import datetime
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -14,246 +13,33 @@ from PyQt6.QtWidgets import (
     QLabel,
     QProgressBar,
     QListWidget,
-    QListWidgetItem,
     QSpinBox,
-    QCheckBox,
     QScrollArea,
     QFrame,
     QFileDialog,
     QMessageBox,
     QGridLayout,
     QDialog,
-    QTextEdit,
-    QDialogButtonBox,
     QSlider,
     QTabWidget,
     QSplitter,
     QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QSettings
+from PyQt6.QtCore import Qt, QThread, QUrl, QTimer, QSettings
 from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from typing import Optional, Callable
+from typing import Optional
 from functools import partial
 
 from project.project import ProjectManager, Project
 from video.creator import VideoCreator
 
 from upload.youtube import UploadWorker
-
-from script.generator import ScriptGenerator
-
-from PyQt6.QtWidgets import QMenuBar, QMenu, QComboBox
-
-
-class VideoWorker(QThread):
-    progress = pyqtSignal(str, int)
-    finished = pyqtSignal(bool)
-
-    def __init__(self, creator: VideoCreator, project: Project, method: Callable):
-        super().__init__()
-        self.creator = creator
-        self.project = project
-        self.method = method
-
-    def run(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        success = loop.run_until_complete(self.method(self.project, self.progress.emit))
-
-        loop.close()
-        self.finished.emit(success)
-
-
-class RegenerationDialog(QDialog):
-    def __init__(self, prompt: str, script: str, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Regenerate Scene")
-        self.setModal(True)
-        self.setMinimumWidth(500)
-
-        layout = QVBoxLayout(self)
-
-        # Image prompt section
-        layout.addWidget(QLabel("Image Prompt:"))
-        self.prompt_edit = QTextEdit()
-        self.prompt_edit.setPlainText(prompt)
-        layout.addWidget(self.prompt_edit)
-
-        # Audio script section
-        layout.addWidget(QLabel("Audio Script:"))
-        self.script_edit = QTextEdit()
-        self.script_edit.setPlainText(script)
-        layout.addWidget(self.script_edit)
-
-        # Checkboxes
-        self.regen_image_cb = QCheckBox("Regenerate Image")
-        self.regen_image_cb.setChecked(True)
-        layout.addWidget(self.regen_image_cb)
-
-        self.regen_audio_cb = QCheckBox("Regenerate Audio")
-        layout.addWidget(self.regen_audio_cb)
-
-        # Buttons
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-
-class TopicSuggestionDialog(QDialog):
-    def __init__(self, existing_topics, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Suggested Topics")
-        self.setModal(True)
-        self.setMinimumWidth(400)
-
-        layout = QVBoxLayout(self)
-
-        # Add topic list
-        self.topic_list = QListWidget()
-        layout.addWidget(self.topic_list)
-
-        # Add buttons
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok
-            | QDialogButtonBox.StandardButton.Cancel
-            | QDialogButtonBox.StandardButton.Reset
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        button_box.button(QDialogButtonBox.StandardButton.Reset).clicked.connect(
-            self.generate_topics
-        )
-        layout.addWidget(button_box)
-
-        self.existing_topics = existing_topics
-        self.generate_topics()
-
-    def generate_topics(self):
-        """Generate new topic suggestions"""
-        self.topic_list.clear()
-
-        # Hardcoded list of topic categories
-        categories = [
-            "Istorie românească",
-            "Legende și mituri",
-            "Personalități istorice",
-            "Tradiții și obiceiuri",
-            "Locuri fascinante din România",
-            "Evenimente istorice importante",
-            "Povești populare",
-            "Artă și cultură românească",
-        ]
-
-        # Add 2-3 suggestions per category
-        for category in categories:
-            suggestions = ScriptGenerator.get_topic_suggestions(
-                category, exclude_topics=self.existing_topics
-            )
-            for topic in suggestions[:3]:
-                item = QListWidgetItem(f"{category}: {topic}")
-                self.topic_list.addItem(item)
-
-    def get_selected_topic(self):
-        """Get the selected topic without category prefix"""
-        item = self.topic_list.currentItem()
-        if item:
-            # Remove category prefix
-            return item.text().split(": ", 1)[1]
-        return None
-
-
-class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Settings")
-        self.setModal(True)
-        self.setMinimumWidth(400)
-
-        # Load settings
-        self.settings = QSettings("CloudePython", "AIVideoCreator")
-
-        layout = QVBoxLayout(self)
-
-        # API Keys section
-        layout.addWidget(QLabel("API Keys:"))
-
-        # OpenRouter API Key
-        layout.addWidget(QLabel("OpenRouter API Key:"))
-        self.openrouter_key = QLineEdit()
-        self.openrouter_key.setText(self.settings.value("openrouter_api_key", ""))
-        self.openrouter_key.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self.openrouter_key)
-
-        # Stability API Key
-        layout.addWidget(QLabel("Stability API Key:"))
-        self.stability_key = QLineEdit()
-        self.stability_key.setText(self.settings.value("stability_api_key", ""))
-        self.stability_key.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self.stability_key)
-
-        # ElevenLabs API Key
-        layout.addWidget(QLabel("ElevenLabs API Key:"))
-        self.elevenlabs_key = QLineEdit()
-        self.elevenlabs_key.setText(self.settings.value("elevenlabs_api_key", ""))
-        self.elevenlabs_key.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self.elevenlabs_key)
-
-        # Voice ID section
-        layout.addWidget(QLabel("ElevenLabs Voice ID:"))
-        self.voice_id = QLineEdit()
-        self.voice_id.setText(
-            self.settings.value("elevenlabs_voice_id", "Nhs6IYoAcBwjSVy82OUS")
-        )  # Default voice
-        layout.addWidget(self.voice_id)
-
-        # Add help text for voice ID
-        help_text = QLabel("Default: Nhs6IYoAcBwjSVy82OUS (Rachel Voice)")
-        help_text.setStyleSheet("color: gray; font-size: 10px;")
-        layout.addWidget(help_text)
-
-        # Script Language section
-        layout.addWidget(QLabel("Script Generation:"))
-
-        self.language_combo = QComboBox()
-        self.language_combo.addItems(["Romanian", "English"])
-        current_lang = self.settings.value("script_language", "Romanian")
-        self.language_combo.setCurrentText(current_lang)
-        layout.addWidget(self.language_combo)
-
-        # Buttons
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.save_settings)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-    def save_settings(self):
-        # Save API keys
-        self.settings.setValue("openrouter_api_key", self.openrouter_key.text())
-        self.settings.setValue("stability_api_key", self.stability_key.text())
-        self.settings.setValue("elevenlabs_api_key", self.elevenlabs_key.text())
-
-        # Save voice ID
-        self.settings.setValue("elevenlabs_voice_id", self.voice_id.text())
-
-        # Save language
-        self.settings.setValue("script_language", self.language_combo.currentText())
-
-        # Update environment variables
-        os.environ["OPENROUTER_API_KEY"] = self.openrouter_key.text()
-        os.environ["STABILITY_API_KEY"] = self.stability_key.text()
-        os.environ["ELEVENLABS_API_KEY"] = self.elevenlabs_key.text()
-        os.environ["ELEVENLABS_VOICE_ID"] = self.voice_id.text()
-
-        self.accept()
-
+from gui.workers.VideoWorker import VideoWorker
+from gui.dialogs.RegenerationDialog import RegenerationDialog
+from gui.dialogs.TopicSuggestionDialog import TopicSuggestionDialog
+from gui.dialogs.SettingsDialog import SettingsDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -274,11 +60,11 @@ class MainWindow(QMainWindow):
 
         # Initialize UI
         self.init_ui()
-        
+
         # Initialize other components
         self.load_projects()
         self.create_menu_bar()
-        
+
         # Setup media player
         self.audio_output = QAudioOutput()
         self.media_player = QMediaPlayer()
@@ -438,7 +224,9 @@ class MainWindow(QMainWindow):
         self.video_widget.setMinimumSize(640, 360)  # 16:9 minimum size
         self.video_widget.setStyleSheet("border: 1px solid #ccc;")
         self.video_widget.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.video_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.video_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.video_widget.mouseReleaseEvent = self.toggle_video_playback
         video_layout.addWidget(self.video_widget)
 
@@ -658,16 +446,16 @@ class MainWindow(QMainWindow):
         try:
             # Validate progress value
             value = max(0, min(100, value))  # Ensure value is between 0-100
-            
+
             # Update UI elements
-            if hasattr(self, 'progress_bar'):
+            if hasattr(self, "progress_bar"):
                 self.progress_bar.setValue(value)
-            if hasattr(self, 'status_label'):
+            if hasattr(self, "status_label"):
                 self.status_label.setText(status)
-                
+
             # Force UI update for smoother progress
             QApplication.processEvents()
-            
+
         except Exception as e:
             print(f"Error updating progress: {e}")
 
@@ -677,7 +465,7 @@ class MainWindow(QMainWindow):
             # Reset progress
             self.progress_bar.setValue(0)
             self.status_label.setText("")
-            
+
             subject = self.subject_input.text().strip()
             if not subject:
                 self.status_label.setText("Please enter a subject")
@@ -722,7 +510,7 @@ class MainWindow(QMainWindow):
             self.worker.start()
 
             self.update_ui_state(is_processing=True)
-            
+
         except Exception as e:
             self.update_progress(f"Error starting video creation: {str(e)}", 0)
             self.update_ui_state(is_processing=False)
@@ -1009,7 +797,9 @@ class MainWindow(QMainWindow):
             return
 
         # Get current prompt and script
-        prompt = self.current_project.metadata["image_descriptions"][self.selected_image_index]
+        prompt = self.current_project.metadata["image_descriptions"][
+            self.selected_image_index
+        ]
         script = self.current_project.scripts[self.selected_image_index]
 
         # Show dialog
@@ -1024,7 +814,9 @@ class MainWindow(QMainWindow):
         changes_made = False
 
         if dialog.regen_image_cb.isChecked():
-            self.current_project.metadata["image_descriptions"][self.selected_image_index] = new_prompt
+            self.current_project.metadata["image_descriptions"][
+                self.selected_image_index
+            ] = new_prompt
             changes_made = True
 
         if dialog.regen_audio_cb.isChecked():
@@ -1037,13 +829,13 @@ class MainWindow(QMainWindow):
                 self.video_creator,
                 self.current_project,
                 lambda p, cb: self.video_creator.regenerate_scene(
-                    p, 
+                    p,
                     self.selected_image_index,
                     cb,
-                    skip_audio=not dialog.regen_audio_cb.isChecked()
-                )
+                    skip_audio=not dialog.regen_audio_cb.isChecked(),
+                ),
             )
-            
+
             self.worker.progress.connect(self.update_progress)
             self.worker.finished.connect(self.on_scene_update_finished)
             self.worker.start()
@@ -1168,7 +960,7 @@ class MainWindow(QMainWindow):
 
         # Set new duration based on category
         new_duration = 60 if new_category == "shorts" else 120
-        
+
         # Update project and UI
         self.current_project.duration = new_duration
         self.duration_input.setValue(new_duration)
