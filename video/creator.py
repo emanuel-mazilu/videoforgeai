@@ -33,6 +33,7 @@ class VideoCreator:
             # Script generation (0-20%)
             self._update_progress(progress_callback, "Generating script...", 0)
             script_data = await self.script_generator.generate_script(project.subject, project.duration)
+            print(f"Script data: {script_data}")
             if not script_data or not self.script_generator.validate_script(script_data):
                 self._update_progress(progress_callback, "Error: Failed to generate or validate script", 0)
                 return False

@@ -62,6 +62,9 @@ image per sentence to maintain a dynamic pace.
 
 The image descriptions must be in English and ONLY English. This is crucial.
 
+IF VIDEO LENGTH IS 60 SECONDS:
+- script should not be longer than 10 senteces and 10 images
+
 Finally, craft an irresistible YouTube title and description drenched in SEO magic, guaranteeing
 your YouTube shorts skyrocket to the top of search results and entice viewers to dive headfirst into
 your captivating content.

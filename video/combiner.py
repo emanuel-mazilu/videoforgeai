@@ -7,7 +7,7 @@ from typing import List, Optional
 class VideoCombiner:
     def __init__(self):
         self.font_size = 84
-        # Încearcă să găsească fonturi mai bune în ordine de preferință
+        # Check for available fonts
         possible_fonts = [
             "/System/Library/Fonts/Supplemental/SFCompact-Semibold.otf",      # SF Compact
             "/System/Library/Fonts/Supplemental/HelveticaNeue.ttc",           # Helvetica Neue
@@ -17,7 +17,7 @@ class VideoCombiner:
             "/System/Library/Fonts/Supplemental/Arial.ttf",                   # Arial (fallback)
         ]
         
-        # Folosește primul font găsit
+        # Use first available font
         self.font_file = next((f for f in possible_fonts if Path(f).exists()), "/System/Library/Fonts/Supplemental/Arial.ttf")
         # Create assets directory if it doesn't exist
         self.assets_dir = Path("assets")
@@ -77,7 +77,7 @@ class VideoCombiner:
 
         for word in words:
             word_length = len(word)
-            # Verifică dacă adăugarea cuvântului ar depăși limita de caractere
+            # Verify if adding the next word exceeds the max_chars limit
             if current_line and (current_length + 1 + word_length > max_chars):
                 lines.append(" ".join(current_line))
                 current_line = [word]
@@ -117,8 +117,8 @@ class VideoCombiner:
 
             if is_short:
                 scale_filter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
-                text_size = self.font_size - 8
-                base_y = "h-180"
+                text_size = self.font_size - 16
+                base_y = "h-250"
                 line_spacing = 85
                 max_chars = 28
                 fade_duration = 0.5
