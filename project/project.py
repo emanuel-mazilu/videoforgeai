@@ -1,10 +1,10 @@
-import os
 import json
 import time
 import shutil
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional
 from pathlib import Path
+
 
 @dataclass
 class Project:
@@ -27,9 +27,9 @@ class Project:
         timestamp = time.time()
         project_dir = Path(f"projects/{project_id}")
         project_dir.mkdir(parents=True, exist_ok=True)
-        
+
         output_path = project_dir / "output.mp4"
-        
+
         return cls(
             id=project_id,
             title="",  # Will be set after script generation
@@ -53,7 +53,7 @@ class Project:
         # Create project directory structure
         project_dir = Path(f"projects/{self.id}")
         project_dir.mkdir(parents=True, exist_ok=True)
-        
+
         for subdir in ['images', 'audio', 'temp']:
             (project_dir / subdir).mkdir(exist_ok=True)
 
@@ -106,6 +106,7 @@ class Project:
         """Add metadata to the project"""
         self.metadata[key] = value
         self.update()
+
 
 class ProjectManager:
     def __init__(self):

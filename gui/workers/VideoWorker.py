@@ -1,8 +1,9 @@
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QSettings
+from PyQt6.QtCore import QThread, pyqtSignal
 from video.creator import VideoCreator
-from project.project import ProjectManager, Project
+from project.project import Project
 import asyncio
-from typing import Optional, Callable
+from typing import Callable
+
 
 class VideoWorker(QThread):
     progress = pyqtSignal(str, int)

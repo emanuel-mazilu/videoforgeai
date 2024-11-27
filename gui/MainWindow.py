@@ -41,6 +41,7 @@ from gui.dialogs.RegenerationDialog import RegenerationDialog
 from gui.dialogs.TopicSuggestionDialog import TopicSuggestionDialog
 from gui.dialogs.SettingsDialog import SettingsDialog
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -82,34 +83,6 @@ class MainWindow(QMainWindow):
         self.upload_worker = None
         self.settings = QSettings("VideoForgeAI", "VideoForgeAI")
 
-    def create_menu_bar(self):
-        """Create the application menu bar"""
-        menubar = self.menuBar()
-
-        # File menu with updated title
-        file_menu = menubar.addMenu("File")
-
-        # Settings action
-        settings_action = file_menu.addAction("Settings")
-        settings_action.triggered.connect(self.show_settings)
-
-        # Exit action
-        exit_action = file_menu.addAction("Exit")
-        exit_action.triggered.connect(self.close)
-
-    def show_settings(self):
-        """Show the settings dialog"""
-        dialog = SettingsDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            # Reload API keys in generators
-            self.video_creator.script_generator.api_key = os.getenv(
-                "OPENROUTER_API_KEY"
-            )
-            self.video_creator.image_generator.api_key = os.getenv("STABILITY_API_KEY")
-            self.video_creator.audio_generator.api_key = os.getenv("ELEVENLABS_API_KEY")
-
-            QMessageBox.information(self, "Settings", "Settings saved successfully!")
-
     def init_ui(self):
         # Create main widget and layout
         main_widget = QWidget()
@@ -147,7 +120,8 @@ class MainWindow(QMainWindow):
 
         # Long List (> 60s)
         self.project_lists["long"] = QListWidget()
-        self.project_lists["long"].currentItemChanged.connect(self.on_project_selected)
+        self.project_lists["long"].currentItemChanged.connect(
+            self.on_project_selected)
         tabs.addTab(self.project_lists["long"], "Long")
 
         projects_layout.addWidget(tabs)
@@ -173,7 +147,8 @@ class MainWindow(QMainWindow):
         self.suggest_topic_btn = QPushButton("Suggest Topics")
         self.suggest_topic_btn.clicked.connect(self.show_topic_suggestions)
         # Add it after the subject input
-        form_layout.insertWidget(2, self.suggest_topic_btn)  # Add after Subject label
+        # Add after Subject label
+        form_layout.insertWidget(2, self.suggest_topic_btn)
 
         # Duration input
         duration_layout = QHBoxLayout()
@@ -280,7 +255,8 @@ class MainWindow(QMainWindow):
         self.replace_image_btn = QPushButton("Replace Image")
         self.replace_image_btn.clicked.connect(self.replace_selected_image)
         self.regenerate_image_btn = QPushButton("Regenerate Image/Audio")
-        self.regenerate_image_btn.clicked.connect(self.regenerate_selected_image)
+        self.regenerate_image_btn.clicked.connect(
+            self.regenerate_selected_image)
         image_actions.addWidget(self.replace_image_btn)
         image_actions.addWidget(self.regenerate_image_btn)
         image_layout.addLayout(image_actions)
@@ -316,10 +292,13 @@ class MainWindow(QMainWindow):
             self.video_creator.script_generator.api_key = os.getenv(
                 "OPENROUTER_API_KEY"
             )
-            self.video_creator.image_generator.api_key = os.getenv("STABILITY_API_KEY")
-            self.video_creator.audio_generator.api_key = os.getenv("ELEVENLABS_API_KEY")
+            self.video_creator.image_generator.api_key = os.getenv(
+                "STABILITY_API_KEY")
+            self.video_creator.audio_generator.api_key = os.getenv(
+                "ELEVENLABS_API_KEY")
 
-            QMessageBox.information(self, "Settings", "Settings saved successfully!")
+            QMessageBox.information(
+                self, "Settings", "Settings saved successfully!")
 
     def handle_media_error(self, error):
         """Handle media player errors"""
@@ -429,7 +408,8 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             "Delete Project",
-            f'Are you sure you want to delete project "{self.current_project.subject}"?',
+            f'Are you sure you want to delete project "{
+                self.current_project.subject}"?',
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -478,7 +458,8 @@ class MainWindow(QMainWindow):
                     reply = QMessageBox.question(
                         self,
                         "Project Exists",
-                        f'A project with subject "{subject}" already exists. Do you want to create a new one anyway?',
+                        f'A project with subject "{
+                            subject}" already exists. Do you want to create a new one anyway?',
                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                         QMessageBox.StandardButton.No,
                     )
@@ -503,7 +484,8 @@ class MainWindow(QMainWindow):
             self.worker = VideoWorker(
                 self.video_creator,
                 self.current_project,
-                lambda p, cb: self.video_creator.create_video(p, cb, skip_audio=False),
+                lambda p, cb: self.video_creator.create_video(
+                    p, cb, skip_audio=False),
             )
             self.worker.progress.connect(self.update_progress)
             self.worker.finished.connect(self.on_video_creation_finished)
@@ -577,10 +559,10 @@ class MainWindow(QMainWindow):
 
             # Load video first
             if (
-                self.current_project.output_path
-                and Path(self.current_project.output_path).exists()
+                self.current_project.output_path and Path(self.current_project.output_path).exists()
             ):
-                video_path = QUrl.fromLocalFile(self.current_project.output_path)
+                video_path = QUrl.fromLocalFile(
+                    self.current_project.output_path)
                 self.media_player.setSource(video_path)
                 print(f"Loaded video: {self.current_project.output_path}")
             else:
@@ -592,7 +574,8 @@ class MainWindow(QMainWindow):
 
             # Load images only if they exist and haven't been loaded already
             if self.current_project.images:
-                print(f"Starting to load {len(self.current_project.images)} images...")
+                print(f"Starting to load {
+                      len(self.current_project.images)} images...")
                 # Use a timer to load images after a short delay
                 QTimer.singleShot(200, self.load_image_gallery)
             else:
@@ -648,7 +631,8 @@ class MainWindow(QMainWindow):
                     label.setFixedSize(image_width, image_height)
                     label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     label.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
-                    label.mousePressEvent = partial(self.select_image, idx, label)
+                    label.mousePressEvent = partial(
+                        self.select_image, idx, label)
 
                     # Load image using cache
                     if image_path not in self.image_cache:
@@ -749,7 +733,8 @@ class MainWindow(QMainWindow):
             QApplication.processEvents()
 
             # Add delay before reloading
-            QTimer.singleShot(500, lambda: self.reload_video_after_regeneration())
+            QTimer.singleShot(
+                500, lambda: self.reload_video_after_regeneration())
         else:
             self.status_label.setText("Error regenerating video")
 
@@ -864,11 +849,14 @@ class MainWindow(QMainWindow):
             if widget and isinstance(widget, QLabel):
                 scene_index = i
                 if scene_index in self.modified_scenes:
-                    widget.setStyleSheet("border: 2px solid orange;")  # Modified scenes
+                    widget.setStyleSheet(
+                        "border: 2px solid orange;")  # Modified scenes
                 elif widget == self.selected_image_label:
-                    widget.setStyleSheet("border: 2px solid blue;")  # Selected scene
+                    widget.setStyleSheet(
+                        "border: 2px solid blue;")  # Selected scene
                 else:
-                    widget.setStyleSheet("border: 1px solid gray;")  # Normal scenes
+                    widget.setStyleSheet(
+                        "border: 1px solid gray;")  # Normal scenes
 
     def clear_form(self):
         """Clear input fields"""
@@ -896,9 +884,8 @@ class MainWindow(QMainWindow):
         """Update UI elements based on current state"""
         has_project = self.current_project is not None
         has_video = (
-            has_project
-            and self.current_project.output_path
-            and Path(self.current_project.output_path).exists()
+            has_project and self.current_project.output_path and Path(
+                self.current_project.output_path).exists()
         )
 
         # Update existing buttons
@@ -912,12 +899,13 @@ class MainWindow(QMainWindow):
 
         # Update image buttons
         has_images = (
-            has_project
-            and hasattr(self.current_project, "images")
-            and len(self.current_project.images or []) > 0
+            has_project and hasattr(self.current_project, "images") and len(
+                self.current_project.images or []) > 0
         )
-        self.replace_image_btn.setEnabled(bool(has_images) and not is_processing)
-        self.regenerate_image_btn.setEnabled(bool(has_images) and not is_processing)
+        self.replace_image_btn.setEnabled(
+            bool(has_images) and not is_processing)
+        self.regenerate_image_btn.setEnabled(
+            bool(has_images) and not is_processing)
 
     def update_metadata_display(self):
         """Update metadata display"""

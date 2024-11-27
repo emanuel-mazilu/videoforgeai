@@ -16,9 +16,10 @@ class VideoCombiner:
             "/System/Library/Fonts/Helvetica.ttc",                            # Helvetica
             "/System/Library/Fonts/Supplemental/Arial.ttf",                   # Arial (fallback)
         ]
-        
+
         # Use first available font
-        self.font_file = next((f for f in possible_fonts if Path(f).exists()), "/System/Library/Fonts/Supplemental/Arial.ttf")
+        self.font_file = next((f for f in possible_fonts if Path(f).exists()),
+                              "/System/Library/Fonts/Supplemental/Arial.ttf")
         # Create assets directory if it doesn't exist
         self.assets_dir = Path("assets")
         self.assets_dir.mkdir(exist_ok=True)
@@ -145,7 +146,7 @@ class VideoCombiner:
 
                 # Create drawtext filters for each half with fade effects
                 text_filters = []
-                
+
                 # First half of text
                 lines1 = self.split_text_into_lines(first_half, max_chars)
                 total_height1 = len(lines1) * line_spacing
@@ -167,10 +168,11 @@ class VideoCombiner:
                         f":box=1:boxcolor=black@0.4:boxborderw=8"
                         f":x=(w-text_w)/2"
                         f":y={y_pos}"
-                        f":alpha='if(lt(t,{fade_duration}),t/{fade_duration},if(lt(t,{half_duration}),1,if(lt(t,{half_duration}+{fade_duration}),({half_duration}+{fade_duration}-t)/{fade_duration},0)))'"
+                        f":alpha='if(lt(t,{fade_duration}),t/{fade_duration},if(lt(t,{half_duration}),1,if(lt(t,{
+                            half_duration}+{fade_duration}),({half_duration}+{fade_duration}-t)/{fade_duration},0)))'"
                     )
                     text_filters.append(filter_text)
-                
+
                 # Second half of text
                 lines2 = self.split_text_into_lines(second_half, max_chars)
                 total_height2 = len(lines2) * line_spacing
@@ -192,7 +194,8 @@ class VideoCombiner:
                         f":box=1:boxcolor=black@0.4:boxborderw=8"
                         f":x=(w-text_w)/2"
                         f":y={y_pos}"
-                        f":alpha='if(lt(t,{half_duration}),0,if(lt(t,{half_duration}+{fade_duration}),((t-{half_duration})/{fade_duration}),if(lt(t,{duration}),1,if(lt(t,{duration}+{fade_duration}),(({duration}+{fade_duration}-t)/{fade_duration}),0))))'"
+                        f":alpha='if(lt(t,{half_duration}),0,if(lt(t,{half_duration}+{fade_duration}),((t-{half_duration})/{fade_duration}),if(lt(t,{
+                            duration}),1,if(lt(t,{duration}+{fade_duration}),(({duration}+{fade_duration}-t)/{fade_duration}),0))))'"
                     )
                     text_filters.append(filter_text)
 
@@ -288,7 +291,7 @@ class VideoCombiner:
 
             # Basic concatenation command with crossfade filter
             filter_complex = []
-            
+
             # Input streams setup
             for i in range(len(video_clips)):
                 filter_complex.append(f"[{i}:v][{i}:a]")
@@ -296,7 +299,7 @@ class VideoCombiner:
             # Add crossfade between clips
             transition_duration = 0.5
             xfade_filters = []
-            
+
             for i in range(len(video_clips)-1):
                 xfade_filters.append(
                     f"[{i}][{i+1}]xfade=transition=fade:duration={transition_duration}"
@@ -419,7 +422,7 @@ class VideoCombiner:
                     "-of",
                     "default=noprint_wrappers=1:nokey=1"
                 ]
-                
+
                 for audio_file in audio_files:
                     try:
                         result = subprocess.run(
@@ -439,10 +442,11 @@ class VideoCombiner:
             video_clips = []
             for i, image_path in enumerate(images):
                 print(f"\nProcessing image {i+1}/{len(images)}: {image_path}")
-                
+
                 # Use exact audio duration for scene length
-                current_duration = scene_durations[i] if i < len(scene_durations) else scene_duration
-                
+                current_duration = scene_durations[i] if i < len(
+                    scene_durations) else scene_duration
+
                 # Get subtitle if available
                 subtitle = scripts[i] if scripts and i < len(scripts) else ""
 

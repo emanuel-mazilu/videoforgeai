@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QDialogButtonBox,
 )
+
+
 class RegenerationDialog(QDialog):
     def __init__(self, prompt: str, script: str, parent=None):
         super().__init__(parent)

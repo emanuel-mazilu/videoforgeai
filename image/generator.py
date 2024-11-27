@@ -3,6 +3,7 @@ import httpx
 from pathlib import Path
 from typing import Optional, List, Tuple
 
+
 class ImageGenerator:
     def __init__(self):
         self.api_key = os.getenv("STABILITY_API_KEY")
@@ -22,7 +23,7 @@ class ImageGenerator:
             # Verificăm dacă prompt-ul conține indicații despre format
             is_vertical = "vertical" in prompt.lower()
             is_horizontal = "horizontal" in prompt.lower()
-            
+
             # Setăm aspect ratio bazat pe format
             aspect_ratio = "9:16" if is_vertical else "16:9" if is_horizontal else "16:9"
 
@@ -58,11 +59,11 @@ class ImageGenerator:
                     try:
                         # Create output directory if it doesn't exist
                         output_path.parent.mkdir(parents=True, exist_ok=True)
-                        
+
                         # Save the image
                         with open(output_path, "wb") as f:
                             f.write(response.content)
-                            
+
                         return str(output_path), None
                     except Exception as e:
                         return None, f"Error saving generated image: {str(e)}"
@@ -86,42 +87,42 @@ class ImageGenerator:
     async def generate_project_images(self, project_id: str, descriptions: List[str], is_short: bool = True) -> Tuple[List[str], Optional[str]]:
         """Generate all images for a project"""
         generated_images = []
-        
+
         # Define aspect ratio based on video type
         aspect_ratio = "9:16" if is_short else "16:9"
         orientation = "vertical" if is_short else "horizontal"
         print(f"Generating images in {aspect_ratio} format ({orientation})")
-        
+
         for i, description in enumerate(descriptions):
             output_path = Path(f"projects/{project_id}/images/scene{i+1}-image.webp")
-            
+
             # Add style, quality and aspect ratio prompts to the description
             enhanced_prompt = (
                 f"{description}, cinematic, dramatic lighting, photorealistic, "
                 f"{aspect_ratio} aspect ratio, {orientation} format, "
                 "high quality"
             )
-            
+
             image_path, error = await self.generate_image(enhanced_prompt, output_path)
             if image_path:
                 generated_images.append(image_path)
             else:
                 return [], f"Failed to generate image {i+1}: {error}"
-                
+
         return generated_images, None
 
     async def regenerate_image(self, project_id: str, image_index: int, description: str, is_short: bool = True) -> Tuple[Optional[str], Optional[str]]:
         """Regenerate a specific image"""
         output_path = Path(f"projects/{project_id}/images/scene{image_index+1}-image.webp")
-        
+
         # Define aspect ratio and orientation based on video type
         aspect_ratio = "9:16" if is_short else "16:9"
         orientation = "vertical" if is_short else "horizontal"
-        
+
         enhanced_prompt = (
             f"{description}, cinematic, dramatic lighting, photorealistic, "
             f"{aspect_ratio} aspect ratio, {orientation} format, "
             "high quality"
         )
-        
+
         return await self.generate_image(enhanced_prompt, output_path)

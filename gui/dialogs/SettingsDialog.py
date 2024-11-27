@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QSettings
 from PyQt6.QtWidgets import QComboBox
 
+
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -94,4 +95,3 @@ class SettingsDialog(QDialog):
         os.environ["ELEVENLABS_VOICE_ID"] = self.voice_id.text()
 
         self.accept()
-

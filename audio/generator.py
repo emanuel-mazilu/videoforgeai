@@ -193,7 +193,7 @@ class AudioGenerator:
         self, effect_name: str, project_id: str, index: int
     ) -> Optional[str]:
         """Generate a sound effect"""
-        output_path = Path(f"projects/{project_id}/audio/sound_effect_{index}.mp3")
+        Path(f"projects/{project_id}/audio/sound_effect_{index}.mp3")
 
         # Here we would typically use a sound effect library or AI service
         # For now, we'll just return None as this would require additional setup

@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 from script.generator import ScriptGenerator
 
+
 class TopicSuggestionDialog(QDialog):
     def __init__(self, existing_topics, parent=None):
         super().__init__(parent)

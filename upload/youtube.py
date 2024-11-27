@@ -71,11 +71,11 @@ class UploadWorker(QThread):
                 if file_inputs:
                     file_inputs[0].send_keys(str(video_path))
                     print("Upload succeeded using direct file input")
-                    
+
                     # Wait for upload progress indicator
                     WebDriverWait(driver, 30).until(
                         EC.presence_of_element_located((
-                            By.CSS_SELECTOR, 
+                            By.CSS_SELECTOR,
                             "ytcp-upload-progress-bar, ytcp-video-upload-progress"
                         ))
                     )
@@ -95,19 +95,19 @@ class UploadWorker(QThread):
                 file_input = driver.execute_script(js_code)
                 driver.execute_script("arguments[0].style.display = 'block';", file_input)
                 file_input.send_keys(str(video_path))
-                
+
                 # Wait for upload progress indicator
                 WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((
-                        By.CSS_SELECTOR, 
+                        By.CSS_SELECTOR,
                         "ytcp-upload-progress-bar, ytcp-video-upload-progress"
                     ))
                 )
-                
+
                 driver.execute_script("arguments[0].remove();", file_input)
                 print("Upload succeeded using temporary file input")
                 return True
-                
+
             except Exception as e:
                 print(f"Temporary file input failed: {e}")
 
@@ -115,13 +115,13 @@ class UploadWorker(QThread):
             try:
                 select_files_button = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((
-                        By.CSS_SELECTOR, 
+                        By.CSS_SELECTOR,
                         "#select-files-button"
                     ))
                 )
                 select_files_button.click()
                 time.sleep(2)
-                
+
                 # Create a new file input and trigger it
                 js_code = """
                     const input = document.createElement('input');
@@ -135,18 +135,18 @@ class UploadWorker(QThread):
                 """
                 file_input = driver.execute_script(js_code)
                 file_input.send_keys(str(video_path))
-                
+
                 # Wait for upload progress indicator
                 WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((
-                        By.CSS_SELECTOR, 
+                        By.CSS_SELECTOR,
                         "ytcp-upload-progress-bar, ytcp-video-upload-progress"
                     ))
                 )
-                
+
                 print("Upload succeeded using select files button")
                 return True
-                
+
             except Exception as e:
                 print(f"Select files button method failed: {e}")
 
@@ -161,7 +161,7 @@ class UploadWorker(QThread):
         try:
             # Wait for title container and any auto-population
             time.sleep(8)
-            
+
             # Find title input using multiple selectors
             title_input = None
             selectors = [
@@ -169,7 +169,7 @@ class UploadWorker(QThread):
                 "#textbox",
                 "//div[@id='textbox']"
             ]
-            
+
             for selector in selectors:
                 try:
                     if selector.startswith("//"):
@@ -180,19 +180,19 @@ class UploadWorker(QThread):
                         break
                 except:
                     continue
-            
+
             if not title_input:
                 print("Could not find title input")
                 return False
-                
+
             # Clear title using JavaScript first
             driver.execute_script("arguments[0].innerHTML = '';", title_input)
             time.sleep(1)
-            
+
             # Click to focus
             title_input.click()
             time.sleep(1)
-            
+
             # Clear using keyboard shortcuts
             active_element = driver.switch_to.active_element
             active_element.send_keys(Keys.CONTROL + "a")
@@ -201,7 +201,7 @@ class UploadWorker(QThread):
             time.sleep(0.5)
             active_element.send_keys(Keys.BACKSPACE)  # Extra clear
             time.sleep(1)
-            
+
             # Verify field is empty
             current_text = title_input.get_attribute('innerHTML').strip()
             if current_text:
@@ -209,26 +209,26 @@ class UploadWorker(QThread):
                 # Try one more time to clear
                 driver.execute_script("arguments[0].innerHTML = '';", title_input)
                 time.sleep(1)
-            
+
             # Set new title
             active_element.send_keys(title)
             time.sleep(2)
-            
+
             # Click outside to ensure title is set
             driver.execute_script("""
                 document.querySelector('ytcp-video-metadata-editor-basics').click();
             """)
             time.sleep(1)
-            
+
             # Verify title was set correctly
             current_title = title_input.get_attribute('innerHTML').strip()
             if current_title != title:
                 print(f"Title verification failed. Expected: {title}, Got: {current_title}")
                 return False
-                
+
             print("Successfully set and verified title")
             return True
-            
+
         except Exception as e:
             print(f"Error in set_title_with_verification: {e}")
             return False
@@ -314,17 +314,17 @@ class UploadWorker(QThread):
 
             # Start upload process
             self.progress.emit("Starting upload process...", 30)
-            
+
             # Wait for any overlays to disappear
             time.sleep(2)
-            
+
             # Click create button
             create_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "#create-icon"))
             )
             driver.execute_script("arguments[0].click();", create_button)
             time.sleep(2)
-            
+
             # Click upload option
             upload_option = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "tp-yt-paper-item#text-item-0"))
@@ -340,12 +340,12 @@ class UploadWorker(QThread):
             # Wait for upload dialog to be ready
             time.sleep(8)  # Longer wait after upload
 
-            # Set title with improved method
+            # Set title
             self.progress.emit("Setting video title...", 60)
             if not self.set_title_with_verification(driver, title):
                 print("Warning: Could not verify title was set correctly")
 
-            # Set description with improved handling
+            # Set description
             self.progress.emit("Setting video description...", 70)
             try:
                 # Wait for description container
@@ -355,18 +355,18 @@ class UploadWorker(QThread):
                         "div[aria-label='Tell viewers about your video (type @ to mention a channel)']"
                     ))
                 )
-                
+
                 # Click to focus
                 description_container.click()
                 time.sleep(1)
-                
+
                 # Clear and set description
                 active_element = driver.switch_to.active_element
                 active_element.send_keys(Keys.CONTROL + "a")
                 active_element.send_keys(Keys.DELETE)
                 time.sleep(1)
                 active_element.send_keys(description)
-                
+
                 print("Successfully set description")
                 time.sleep(2)
             except Exception as e:
