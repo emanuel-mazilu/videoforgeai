@@ -142,14 +142,12 @@ class VideoCombiner:
 
                 # Calculate display timings
                 half_duration = duration / 2
-                fade_time = int(fade_duration * 1000)  # Convert to milliseconds
 
                 # Create drawtext filters for each half with fade effects
                 text_filters = []
 
                 # First half of text
                 lines1 = self.split_text_into_lines(first_half, max_chars)
-                total_height1 = len(lines1) * line_spacing
                 start_y1 = int(base_y.replace("h-", ""))
 
                 for i, line in enumerate(reversed(lines1)):
@@ -175,7 +173,6 @@ class VideoCombiner:
 
                 # Second half of text
                 lines2 = self.split_text_into_lines(second_half, max_chars)
-                total_height2 = len(lines2) * line_spacing
                 start_y2 = int(base_y.replace("h-", ""))
 
                 for i, line in enumerate(reversed(lines2)):
